@@ -362,55 +362,78 @@ prompt_release_selection()
   releases_json=$(curl -s https://api.github.com/repos/Raybeam/$selected_plugin/releases)
   for release_name in $(jq -r '.[] | .name' <<< "$releases_json"); do
     release_names_list+=($release_name)
-    release_tags_list+=($release_tag)
   done
   for release_tag in $(jq -r '.[] | .tag_name' <<< "$releases_json"); do
     release_tags_list+=($release_tag)
   done
 
-  while true; do
-    echo -e "\n\nPlease select one of the following versions:"
-    for i in "${!release_names_list[@]}"; do 
-      printf "[%s]\t%s\n" "$i" "${release_names_list[$i]}"
+
+ if [ ! -z "$release_names_list" ]; then
+    while true; do
+      echo -e "\n\nPlease select one of the following versions:"
+      for i in "${!release_names_list[@]}"; do 
+        printf "[%s]\t%s\n" "$i" "${release_names_list[$i]}"
+      done
+      read selected_plugin_version 
+      echo
+
+      case $selected_plugin_version in
+        # if the user entered a string, check if it matches a realease name and download that release
+        ''|*[!0-9]*)
+          if [[ " ${release_names_list[@]} " =~ " ${selected_plugin_version} " ]]; then
+            for i in "${!release_names_list[@]}"; do
+               if [[ "${release_names_list[$i]}" = "${selected_plugin_version}" ]]; then
+                   plugin_index=$i
+                   break
+               fi
+            done
+            selected_plugin_version_tag=${release_tags_list[$plugin_index]}
+
+            echo -e "\nDownloading \"$selected_plugin_version\" into \"$(pwd)/plugins/$selected_plugin\".\n"
+            git clone https://github.com/Raybeam/$selected_plugin --branch $selected_plugin_version_tag $(pwd)/plugins/$selected_plugin
+            break
+          else
+            continue
+          fi
+          ;;
+
+        # if the user entered a number, download the associated release
+        *)
+          if [ $selected_plugin_version -lt "${#release_names_list[@]}" ]; then
+            plugin_index=$selected_plugin_version
+            selected_plugin_version_tag="${release_tags_list[$plugin_index]}"
+            selected_plugin_version="${release_names_list[$plugin_index]}"
+
+            echo -e "\nDownloading \"$selected_plugin_version\" into \"$(pwd)/plugins/$selected_plugin\".\n"
+            git clone https://github.com/Raybeam/$selected_plugin --branch $selected_plugin_version_tag $(pwd)/plugins/$selected_plugin
+            break
+          else
+            continue
+          fi
+          ;;
+      esac
     done
-    read selected_plugin_version 
-    echo
-    case $selected_plugin_version in
-      # if the user entered a string, check if it matches a realease name and download that release
-      ''|*[!0-9]*)
-        if [[ " ${release_names_list[@]} " =~ " ${selected_plugin_version} " ]]; then
-          for i in "${!release_names_list[@]}"; do
-             if [[ "${release_names_list[$i]}" = "${selected_plugin_version}" ]]; then
-                 plugin_index=$i
-                 break
-             fi
-          done
-          selected_plugin_version_tag=${release_tags_list[$plugin_index]}
 
-
-          echo -e "\nDownloading \"$selected_plugin_version\" into \"$(pwd)/plugins/$selected_plugin\".\n"
-          git clone https://github.com/Raybeam/$selected_plugin --branch $selected_plugin_version_tag $(pwd)/plugins/$selected_plugin
+  else
+    while true; do
+      echo -e "No releases available yet. Would you like to deploy from the master branch?(Y/n)"
+      read deploy_from_master
+      case $deploy_from_master in
+        [yY])
+          echo -e "\nDownloading $selected_plugin's master branch into \"$(pwd)/plugins/$selected_plugin\".\n"
+          git clone https://github.com/Raybeam/$selected_plugin $(pwd)/plugins/$selected_plugin
           break
-        else
-          continue
-        fi
-        ;;
-      # if the user entered a number, download the associated release
-      *)
-        if [ $selected_plugin_version -lt "${#release_names_list[@]}" ]; then
-          plugin_index=$selected_plugin_version
-          selected_plugin_version_tag="${release_tags_list[$plugin_index]}"
-          selected_plugin_version="${release_names_list[$plugin_index]}"
-
-          echo -e "\nDownloading \"$selected_plugin_version\" into \"$(pwd)/plugins/$selected_plugin\".\n"
-          git clone https://github.com/Raybeam/$selected_plugin --branch $selected_plugin_version_tag $(pwd)/plugins/$selected_plugin
-          break
-        else
-          continue
-        fi
-        ;;
-    esac
-  done
+          ;;
+        [nN])
+          echo -e "\n\nExiting deploy script..."
+          exit 1
+          ;;
+        *)
+          echo -e "\n\nInvalid choice..."
+          ;;
+      esac
+    done
+  fi
 }
 
 ################################################################################
