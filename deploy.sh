@@ -6,7 +6,7 @@
 help()
 {
    # Display help
-   echo "This script will deploy the rb Status plugin to an environment, using the instructions listed in the README.md file."
+   echo "This script will deploy a Rabyeam Airflow Plugin to an environment, using the instructions listed in the README.md file."
    echo
    echo
    echo "Required parameters:"
@@ -21,41 +21,67 @@ help()
 }
 
 ################################################################################
-# Prompt for local deploy, whether to include samples                          #
+# Prompt for whether to include samples                                        #
 ################################################################################
-prompt_local_install_type()
+prompt_add_sample_dags()
 {
-  while true; do
-    echo -e "\n\nPlease select which type of deployment you would like:\n\t[1]\tbasic plugin install\n\t[2]\tplugin install and sample dags\n\t[3]\tplugin install and all samples"
-    read user_input_environment 
-    echo
-    case $user_input_environment in
-      "1"|"basic plugin install")
-        echo -e "\nInstalling plugin...\n"
-        plugins/$selected_plugin/bin/rb_status init
-        break
-        ;;
-      "2"|"plugin install and sample dags")
-        echo -e "\nInstalling plugin with sample dags...\n"
-        plugins/$selected_plugin/bin/rb_status init
-        plugins/$selected_plugin/bin/rb_status add_samples --dag_only
-        break
-        ;;
-      "3"|"plugin install and all samples")
-        echo -e "\nInstalling plugin with all samples...\n"
-        plugins/$selected_plugin/bin/rb_status init
-        plugins/$selected_plugin/bin/rb_status add_samples
-        break
-        ;;
-      "4"|"google_cloud_composer")
-        echo -e "\nEnvironment set to: google_cloud_composer\n"
-        environment="google_cloud_composer"
-        break
-        ;;
-      *)
-        echo -e "\nInvalid choice...\n"
-    esac
-  done
+  if [ $selected_plugin == "rb_status_plugin" ]; then 
+    while true; do
+      echo -e "\n\nPlease select which type of deployment you would like:"
+      
+      deploy_options=("basic plugin install" "plugin install and sample dags" "plugin install and all samples")
+      for i in "${!deploy_options[@]}"; do 
+        printf "[%s]\t%s\n" "$i" "${deploy_options[$i]}"
+      done
+      read user_input_environment 
+      echo
+      case $user_input_environment in
+        "0"|"basic plugin install")
+          echo -e "\nInstalling plugin...\n"
+          plugins/$selected_plugin/bin/rb_status init
+          import_sample_dags="n"
+          break
+          ;;
+        "1"|"plugin install and sample dags")
+          echo -e "\nInstalling plugin with sample dags...\n"
+          plugins/$selected_plugin/bin/rb_status init
+          plugins/$selected_plugin/bin/rb_status add_samples --dag_only
+          import_sample_dags="Y"
+          break
+          ;;
+        "2"|"plugin install and all samples")
+          echo -e "\nInstalling plugin with all samples...\n"
+          plugins/$selected_plugin/bin/rb_status init
+          plugins/$selected_plugin/bin/rb_status add_samples
+          import_sample_dags="Y"
+          break
+          ;;
+        *)
+          echo -e "\nInvalid choice...\n"
+      esac
+    done
+
+  elif [ $selected_plugin == "rb_quality_plugin" ]; then 
+    while true; do
+        echo -e "\n\nWould you like to import rb_quality_plugin's sample dags? (Y/n)"
+        read import_sample_dags
+        echo
+        case $import_sample_dags in
+          [yY])
+            echo -e "\n\nImporting sample dags..."
+            mkdir dags/rb_quality_plugin_example_dags
+            cp -r plugins/rb_quality_plugin/example_dags/* dags/rb_quality_plugin_example_dags
+            break
+            ;;
+          [nN])
+            echo -e "\n\nImporting sample dags skipped..."
+            break
+            ;;
+          *)
+            echo -e "\n\nInvalid choice..."
+        esac
+    done
+  fi
 }
 
 ################################################################################
@@ -90,7 +116,7 @@ deploy_local()
   airflow create_user -r Admin -u admin -e admin@example.com -f admin -l user -p admin
 
   echo -e "\n\nInstalling $selected_plugin..."
-  prompt_local_install_type
+  prompt_add_sample_dags
 }
 
 ################################################################################
@@ -176,8 +202,17 @@ deploy_gcc()
   done
   echo -e "\n\nsetting airflow configurations..."
   gcloud composer environments update $ENVIRONMENT_NAME --location $LOCATION --update-airflow-configs webserver-rbac=False,core-store_serialized_dags=False,webserver-async_dagbag_loader=True,webserver-collect_dags_interval=10,webserver-dagbag_sync_interval=10,webserver-worker_refresh_interval=3600
-  echo -e "\n\ninstalling rb-status plugin..."
-  gcloud composer environments storage dags import --environment=$ENVIRONMENT_NAME --location $LOCATION --source $(pwd)/plugins/$selected_plugin/setup/rb_status.py
+  echo -e "\n\ninstalling $selected_plugin..."
+  if [ $selected_plugin == "rb_status_plugin" ]; then
+    if [ "$import_sample_dags" == "y" ] || [ "$import_sample_dags" == "Y" ]; then
+      gcloud composer environments storage dags import --environment=$ENVIRONMENT_NAME --location $LOCATION --source $(pwd)/plugins/$selected_plugin/setup/rb_status.py
+    fi
+  fi
+  if [ $selected_plugin == "rb_quality_plugin" ]; then
+    if [ "$import_sample_dags" == "y" ] || [ "$import_sample_dags" == "Y" ]; then
+      gcloud composer environments storage dags import --environment=$ENVIRONMENT_NAME --location $LOCATION --source $(pwd)/plugins/rb_quality_plugin/example_dags
+    fi
+  fi
   gcloud composer environments storage plugins import --environment=$ENVIRONMENT_NAME --location $LOCATION --source $(pwd)/plugins/$selected_plugin/
 }
 
@@ -255,26 +290,30 @@ start_airflow()
 prompt_deploy()
 {
   while true; do
-    echo -e "\n\nEnvironment not specified. Please select one of the following choices:\n\t[1]\tlocal\n\t[2]\tastronomer_local\n\t[3]\tastronomer_remote\n\t[4]\tgoogle_cloud_composer"
+    echo -e "\n\nEnvironment not specified. Please select one of the following choices:"
+    environment_options=(local astronomer_local astronomer_remote google_cloud_composer)
+    for i in "${!environment_options[@]}"; do 
+      printf "[%s]\t%s\n" "$i" "${environment_options[$i]}"
+    done
     read user_input_environment 
     echo
     case $user_input_environment in
-      "1"|"local")
+      "0"|"local")
         echo -e "\nEnvironment set to: local\n"
         environment="local"
         break
         ;;
-      "2"|"astronomer_local")
+      "1"|"astronomer_local")
         echo -e "\nEnvironment set to: astronomer_local\n"
         environment="astronomer_local"
         break
         ;;
-      "3"|"astronomer_remote")
+      "2"|"astronomer_remote")
         echo -e "\nEnvironment set to: astronomer_remote\n"
         environment="astronomer_remote"
         break
         ;;
-      "4"|"google_cloud_composer")
+      "3"|"google_cloud_composer")
         echo -e "\nEnvironment set to: google_cloud_composer\n"
         environment="google_cloud_composer"
         break
@@ -290,15 +329,18 @@ prompt_deploy()
 prompt_plugin_selection()
 {
   while true; do
-    echo -e "\n\nPlease select one of the following plugins to deploy:\n\t[1]\trb_status_plugin\n\t[2]\trb_quality_plugin"
+    echo -e "\n\nPlease select one of the following plugins to deploy:"
+    for i in "${!plugin_options[@]}"; do 
+      printf "[%s]\t%s\n" "$i" "${plugin_options[$i]}"
+    done
     read user_input_environment 
     echo
     case $user_input_environment in
-      "1"|"rb_status_plugin")
+      "0"|"rb_status_plugin")
         selected_plugin="rb_status_plugin"
         break
         ;;
-      "2"|"rb_quality_plugin")
+      "1"|"rb_quality_plugin")
         selected_plugin="rb_quality_plugin"
         break
         ;;
@@ -347,7 +389,7 @@ prompt_release_selection()
 
 
           echo -e "\nDownloading \"$selected_plugin_version\" into \"$(pwd)/plugins/$selected_plugin\".\n"
-          sudo git clone https://github.com/Raybeam/$selected_plugin --branch $selected_plugin_version_tag /plugins/$selected_plugin
+          git clone https://github.com/Raybeam/$selected_plugin --branch $selected_plugin_version_tag $(pwd)/plugins/$selected_plugin
           break
         else
           continue
@@ -361,7 +403,7 @@ prompt_release_selection()
           selected_plugin_version="${release_names_list[$plugin_index]}"
 
           echo -e "\nDownloading \"$selected_plugin_version\" into \"$(pwd)/plugins/$selected_plugin\".\n"
-          sudo git clone https://github.com/Raybeam/$selected_plugin --branch $selected_plugin_version_tag /plugins/$selected_plugin
+          git clone https://github.com/Raybeam/$selected_plugin --branch $selected_plugin_version_tag $(pwd)/plugins/$selected_plugin
           break
         else
           continue
@@ -394,6 +436,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+plugin_options=(rb_status_plugin rb_quality_plugin)
 prompt_plugin_selection
 prompt_release_selection
 
