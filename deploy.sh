@@ -167,8 +167,8 @@ deploy_gcc()
   prompt_in_progress=true
   while $prompt_in_progress; do
     echo -e "\n\n\n"
-    echo "Please select one of the following regions to deploy to:"
     region_list=( $(gcloud compute regions list --format="value(name)") )
+    echo "Please select one of the following regions to deploy to:"
     format_prompt "region" "${region_list[@]}"
   done
   LOCATION=$choice_selected
@@ -356,6 +356,12 @@ prompt_plugin_selection()
 ################################################################################
 prompt_release_selection()
 {
+
+  if ! [ -x "$(command -v jq)" ]; then
+    echo "Unable to complete deploy, please install jq."
+    exit 1
+  fi
+
   release_names_list=()
   release_tags_list=()
   echo -e "Fetching list of releases..."
