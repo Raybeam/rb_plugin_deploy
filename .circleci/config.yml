@@ -49,12 +49,13 @@ jobs:
         name: Download plugins and install requirements
     - run:
         command: |-
+          . ~/.venv/bin/activate
           cat /home/circleci/project/VERSIONS.md  | while read line || [[ -n $line ]];
           do
             if [[ $line =~ "["*"]"  ]]; then
               plugin_name=${line#*\[}
               plugin_name=${plugin_name%\]*}
-              python -m pytest /home/circleci/project/rb_test_airflow/plugins/$plugin_name/tests -m compatibility
+              pytest /home/circleci/project/rb_test_airflow/plugins/$plugin_name/tests -m compatibility
             fi
           done
         name: Run compatiblity tests
