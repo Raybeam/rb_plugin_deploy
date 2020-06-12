@@ -37,7 +37,7 @@ jobs:
           airflow initdb
           mkdir ./plugins/
           airflow create_user -r Admin -u admin -e admin@example.com -f admin -l user -p admin
-          cat VERSIONS.md | while read line 
+          cat /home/circleci/project/VERSIONS.md | while read line 
           do
             if [[ $line =~ [(.+)] ]]; then
                 plugin_name=${BASH_REMATCH[1]}
