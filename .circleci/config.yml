@@ -54,11 +54,10 @@ jobs:
             if [[ $line =~ "["*"]"  ]]; then
               plugin_name=${line#*\[}
               plugin_name=${plugin_name%\]*}
-              pytest /home/circleci/project/rb_test_airflow/plugins/$plugin_name/tests -m compatibility
+              python -m pytest /home/circleci/project/rb_test_airflow/plugins/$plugin_name/tests -m compatibility
             fi
           done
-        name: Run tests
-
+        name: Run compatiblity tests
     - run:
         command: |-
           echo "TRIGGERER: ${CIRCLE_USERNAME}"
