@@ -1,0 +1,95 @@
+version: 2
+jobs:
+  build:
+    docker:
+    - image: circleci/python:3.7.7
+    steps:
+    - checkout
+    - restore_cache:
+        keys:
+          - rb-dependencies-{{ checksum "requirements.txt" }}
+          # fallback to using the latest cache if no exact match is found
+          - rb-dependencies-
+    - run:
+        command: |-
+          python -m venv ~/.venv
+          . ~/.venv/bin/activate
+          pip install apache-airflow
+          pip install -r requirements.txt
+        name: Setup venv
+    - save_cache:
+        paths:
+          - ~/.venv
+        key: rb-dependencies-{{ checksum "requirements.txt" }}
+    - run:
+        command: |-
+          . ~/.venv/bin/activate
+          flake8
+        name: Run flake8 linter
+    - run:
+        command: git clone https://github.com/Raybeam/rb_test_airflow /home/circleci/project/rb_test_airflow
+        name: Set up Airflow
+    - run:
+        command: |-
+          . ~/.venv/bin/activate
+          cd /home/circleci/rb_test_airflow
+          export AIRFLOW_HOME=$PWD
+          airflow initdb
+          mkdir ./plugins/
+          ln -s /home/circleci/project .
+          airflow create_user -r Admin -u admin -e admin@example.com -f admin -l user -p admin
+          cat VERSIONS.md | while read line 
+          do
+            if [[ $line =~ [(.+)] ]; then
+                plugin_name=${BASH_REMATCH[1]}
+                git clone -b compatibility_tests https://github.com/Raybeam/$plugin_name /home/circleci/project/rb_test_airflow/plugins/$plugin_name
+                python -m pytest ./rb_test_airflow/plugins/$plugin_name/tests -m compatibility
+            fi
+          done
+    - run:
+        command: |-
+          echo "TRIGGERER: ${CIRCLE_USERNAME}"
+          echo "BUILD_NUMBER: ${CIRCLE_BUILD_NUM}"
+          echo "BUILD_URL: ${CIRCLE_BUILD_URL}"
+          echo "BRANCH: ${CIRCLE_BRANCH}"
+          echo "RUNNING JOB: ${CIRCLE_JOB}"
+          echo "JOB PARALLELISM: ${CIRCLE_NODE_TOTAL}"
+          echo "CIRCLE_REPOSITORY_URL: ${CIRCLE_REPOSITORY_URL}"
+        name: Show some of the CircleCI runtime env vars
+    - run:
+        command: |-
+          echo "uname:" $(uname -a)
+          echo "arch: " $(arch)
+        name: Show system information
+  jsbuild:
+    docker:
+    - image: circleci/node:12
+    steps:
+    - checkout
+    - restore_cache:
+        keys:
+          - rb-node-dependencies-{{ checksum "package.json" }}
+          # fallback to using the latest cache if no exact match is found
+          - rb-node-dependencies-
+    - run:
+        command: npm ci
+        name: Install Node dependencies
+    - save_cache:
+        paths:
+          - node_modules
+        key: rb-node-dependencies-{{ checksum "package.json" }}
+    - run:
+        command: npm run lint
+        name: Run ESLint
+    - run:
+        command: npm run build
+        name: Build JS for production
+workflows:
+  test:
+    jobs:
+    - build
+    - jsbuild
+
+
+
+
