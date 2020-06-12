@@ -39,7 +39,7 @@ jobs:
           airflow create_user -r Admin -u admin -e admin@example.com -f admin -l user -p admin
           cat VERSIONS.md | while read line 
           do
-            if [[ $line =~ [(.+)] ]; then
+            if [[ $line =~ [(.+)] ]]; then
                 plugin_name=${BASH_REMATCH[1]}
                 git clone -b compatibility_tests https://github.com/Raybeam/$plugin_name /home/circleci/project/rb_test_airflow/plugins/$plugin_name
                 python -m pytest ./project/rb_test_airflow/plugins/$plugin_name/tests -m compatibility
