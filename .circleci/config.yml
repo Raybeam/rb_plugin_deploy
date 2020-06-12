@@ -32,11 +32,10 @@ jobs:
     - run:
         command: |-
           . ~/.venv/bin/activate
-          cd /home/circleci/rb_test_airflow
+          cd /home/circleci/project/rb_test_airflow
           export AIRFLOW_HOME=$PWD
           airflow initdb
           mkdir ./plugins/
-          ln -s /home/circleci/project .
           airflow create_user -r Admin -u admin -e admin@example.com -f admin -l user -p admin
           cat VERSIONS.md | while read line 
           do
