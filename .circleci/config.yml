@@ -35,7 +35,7 @@ jobs:
           cd /home/circleci/project/rb_test_airflow
           export AIRFLOW_HOME=$PWD
           airflow initdb
-          mkdir ./plugins/
+          mkdir /home/circleci/project/rb_test_airflow/plugins/
           airflow create_user -r Admin -u admin -e admin@example.com -f admin -l user -p admin
           cat /home/circleci/project/VERSIONS.md | while read line 
           do
