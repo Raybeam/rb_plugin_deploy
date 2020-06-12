@@ -33,10 +33,7 @@ jobs:
         command: |-
           . ~/.venv/bin/activate
           cd /home/circleci/project/rb_test_airflow
-          export AIRFLOW_HOME=$PWD
-          airflow initdb
           mkdir /home/circleci/project/rb_test_airflow/plugins/
-          airflow create_user -r Admin -u admin -e admin@example.com -f admin -l user -p admin
           cat /home/circleci/project/VERSIONS.md  | while read line || [[ -n $line ]];
           do
             if [[ $line =~ "["*"]"  ]]; then
@@ -54,6 +51,12 @@ jobs:
           export AIRFLOW_HOME=$PWD
           airflow initdb
           airflow create_user -r Admin -u admin -e admin@example.com -f admin -l user -p admin
+          schedule_airflow="airflow scheduler"
+          webserve_airflow="airflow webserver"
+          echo -e "spinning up scheduler and webserver..."
+          $schedule_airflow &
+          $webserve_airflow &
+          sleep 15
           cat /home/circleci/project/VERSIONS.md  | while read line || [[ -n $line ]];
           do
             if [[ $line =~ "["*"]"  ]]; then
