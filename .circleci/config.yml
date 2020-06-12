@@ -56,6 +56,7 @@ jobs:
           echo -e "spinning up scheduler and webserver..."
           $schedule_airflow &
           $webserve_airflow &
+          airflow list_dags
           sleep 15
           cat /home/circleci/project/VERSIONS.md  | while read line || [[ -n $line ]];
           do
