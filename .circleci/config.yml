@@ -43,7 +43,7 @@ jobs:
               plugin_name=${line#*\[}
               plugin_name=${plugin_name%\]*}
               git clone -b compatibility_tests https://github.com/Raybeam/$plugin_name /home/circleci/project/rb_test_airflow/plugins/$plugin_name
-              python -m pytest ./project/rb_test_airflow/plugins/$plugin_name/tests -m compatibility
+              python -m pytest /home/circleci/project/rb_test_airflow/plugins/$plugin_name/tests -m compatibility
             fi
           done
     - run:
