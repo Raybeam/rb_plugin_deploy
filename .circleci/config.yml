@@ -57,7 +57,7 @@ jobs:
           $schedule_airflow &
           $webserve_airflow &
           airflow list_dags
-          airflow backfill rb-sample-dag -s 2015-01-01 -e 2015-01-02
+          
           cat /home/circleci/project/VERSIONS.md  | while read line || [[ -n $line ]];
           do
             if [[ $line =~ "["*"]"  ]]; then
