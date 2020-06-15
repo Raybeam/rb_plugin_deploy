@@ -12,10 +12,10 @@ jobs:
           - rb-dependencies-
     - run:
         command: |-
-          python -m venv ~/.venv
+          python3 -m venv ~/.venv
           . ~/.venv/bin/activate
-          pip install apache-airflow
-          pip install -r requirements.txt
+          pip3 install apache-airflow
+          pip3 install -r requirements.txt
         name: Setup venv
     - save_cache:
         paths:
@@ -32,20 +32,40 @@ jobs:
     - run:
         command: |-
           . ~/.venv/bin/activate
-          cd /home/circleci/rb_test_airflow
-          export AIRFLOW_HOME=$PWD
-          airflow initdb
-          mkdir ./plugins/
-          ln -s /home/circleci/project .
-          airflow create_user -r Admin -u admin -e admin@example.com -f admin -l user -p admin
-          cat VERSIONS.md | while read line 
+          cd /home/circleci/project/rb_test_airflow
+          mkdir /home/circleci/project/rb_test_airflow/plugins/
+          cat /home/circleci/project/VERSIONS.md  | while read line || [[ -n $line ]];
           do
-            if [[ $line =~ [(.+)] ]; then
-                plugin_name=${BASH_REMATCH[1]}
-                git clone -b compatibility_tests https://github.com/Raybeam/$plugin_name /home/circleci/project/rb_test_airflow/plugins/$plugin_name
-                python -m pytest ./rb_test_airflow/plugins/$plugin_name/tests -m compatibility
+            if [[ $line =~ "["*"]"  ]]; then
+              plugin_name=${line#*\[}
+              plugin_name=${plugin_name%\]*}
+              git clone -b compatibility_tests https://github.com/Raybeam/$plugin_name /home/circleci/project/rb_test_airflow/plugins/$plugin_name
+              pip3 install -r /home/circleci/project/rb_test_airflow/plugins/$plugin_name/requirements.txt
             fi
           done
+        name: Download plugins and install requirements
+    - run:
+        command: |-
+          . ~/.venv/bin/activate
+          cd /home/circleci/project/rb_test_airflow
+          export AIRFLOW_HOME=$PWD
+          airflow initdb
+          airflow create_user -r Admin -u admin -e admin@example.com -f admin -l user -p admin
+          schedule_airflow="airflow scheduler"
+          webserve_airflow="airflow webserver"
+          echo -e "spinning up scheduler and webserver..."
+          $schedule_airflow &
+          $webserve_airflow &
+          airflow list_dags
+          cat /home/circleci/project/VERSIONS.md  | while read line || [[ -n $line ]];
+          do
+            if [[ $line =~ "["*"]"  ]]; then
+              plugin_name=${line#*\[}
+              plugin_name=${plugin_name%\]*}
+              pytest /home/circleci/project/rb_test_airflow/plugins/$plugin_name/tests -m compatibility
+            fi
+          done
+        name: Run compatiblity tests
     - run:
         command: |-
           echo "TRIGGERER: ${CIRCLE_USERNAME}"
@@ -65,3 +85,4 @@ workflows:
   test:
     jobs:
     - build
+  version: 2
