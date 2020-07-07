@@ -78,7 +78,7 @@ jobs:
           $schedule_airflow &
           $webserve_airflow &
           set -e
-          cat /home/circleci/rb_test_airflow/plugins/rb_plugin_deploy/VERSIONS.md  | while read line || [[ -n $line ]];
+          cat /home/circleci/project/VERSIONS.md  | while read line || [[ -n $line ]];
           do
             if [[ $line =~ "["*"]"  ]]; then
               plugin_name=${line#*\[}
