@@ -81,6 +81,41 @@ prompt_add_sample_dags()
             echo -e "\n\nInvalid choice..."
         esac
     done
+  else
+    while true; do
+      echo -e "\n\nPlease select which type of deployment you would like:"
+      
+      deploy_options=("basic plugin install" "plugin install and sample dags" "plugin install and all samples")
+      for i in "${!deploy_options[@]}"; do 
+        printf "[%s]\t%s\n" "$i" "${deploy_options[$i]}"
+      done
+      read user_input_environment 
+      echo
+      case $user_input_environment in
+        "0"|"basic plugin install")
+          echo -e "\nInstalling plugin...\n"
+          plugins/$selected_plugin/bin/setup init
+          import_sample_dags="n"
+          break
+          ;;
+        "1"|"plugin install and sample dags")
+          echo -e "\nInstalling plugin with sample dags...\n"
+          plugins/$selected_plugin/bin/setup init
+          plugins/$selected_plugin/bin/setup add_samples --dag_only
+          import_sample_dags="Y"
+          break
+          ;;
+        "2"|"plugin install and all samples")
+          echo -e "\nInstalling plugin with all samples...\n"
+          plugins/$selected_plugin/bin/setup init
+          plugins/$selected_plugin/bin/setup add_samples
+          import_sample_dags="Y"
+          break
+          ;;
+        *)
+          echo -e "\nInvalid choice...\n"
+      esac
+    done
   fi
 }
 
