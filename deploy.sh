@@ -134,6 +134,7 @@ format_prompt() {
 
   if [[ " ${list_choices[@]} " =~ " $choice_selected " ]]; then
     echo -e "$config_param set to $choice_selected"
+    echo "1"
     prompt_in_progress=false
   else
     case $choice_selected in
@@ -141,7 +142,7 @@ format_prompt() {
       echo -e "$choice_selected is an invalid choice."
       ;;
     *)
-      if [ $(($choice_selected < ${#list_choices[@]})) ]; then
+      if (( $choice_selected < ${#list_choices[@]} )); then
         choice_selected="${list_choices[$choice_selected]}"
         echo -e "$config_param set to $choice_selected"
         prompt_in_progress=false
@@ -228,7 +229,7 @@ deploy_astronomer_local()
   
   deploy_local
 
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
    echo -e "To start astro-airflow instance, please run:\n\tsudo astro dev init\n\tsudo astro dev start"
   else
     echo -e "To start astro-airflow instance, please run:\n\tastro dev init\n\tastro dev start"
@@ -246,7 +247,7 @@ deploy_astronomer_remote()
 
   deploy_local
 
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     sudo astro dev init
     sudo astro dev deploy
   else
@@ -324,34 +325,6 @@ prompt_deploy()
   done
 }
 ################################################################################
-#  Prompt user asking what plugin they wish to deploy.                         #
-################################################################################
-prompt_plugin_selection()
-{
-  while true; do
-    echo -e "\n\nPlease select one of the following plugins to deploy:"
-    for i in "${!plugin_options[@]}"; do 
-      printf "[%s]\t%s\n" "$i" "${plugin_options[$i]}"
-    done
-    read user_input_environment 
-    echo
-    case $user_input_environment in
-      "0"|"rb_status_plugin")
-        selected_plugin="rb_status_plugin"
-        break
-        ;;
-      "1"|"rb_quality_plugin")
-        selected_plugin="rb_quality_plugin"
-        break
-        ;;
-      *)
-        echo -e "\nInvalid choice...\n"
-    esac
-  done
-  echo -e "\n$selected_plugin selected.\n"
-}
-
-################################################################################
 #  Prompt user asking what version of the plugin they wish to deploy.          #
 ################################################################################
 prompt_release_selection()
@@ -366,6 +339,7 @@ prompt_release_selection()
   release_tags_list=()
   echo -e "Fetching list of releases..."
   releases_json=$(curl -s https://api.github.com/repos/Raybeam/$selected_plugin/releases)
+  echo "$release_name"
   for release_name in $(jq -r '.[] | .name' <<< "$releases_json"); do
     release_names_list+=($release_name)
   done
@@ -465,8 +439,21 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-plugin_options=(rb_status_plugin rb_quality_plugin)
-prompt_plugin_selection
+plugin_options=()
+while IFS= read line || [[ -n $line ]]; do
+  if [[ $line =~ "["*"]"  ]]; then
+    plugin_string=${line#*\[}
+    plugin_string=${plugin_string%\]*}
+    plugin_options+=("$plugin_string")
+  fi
+done < $(pwd)/plugins/rb_plugin_deploy/VERSIONS.md
+prompt_in_progress=true
+while $prompt_in_progress; do
+  echo -e "\n\n\n"
+  echo "Please select one of the following plugins to deploy:"
+  format_prompt "plugin" "${plugin_options[@]}"
+done
+selected_plugin=$choice_selected
 prompt_release_selection
 
 if [ -z ${environment+x} ]; then
