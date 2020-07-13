@@ -32,9 +32,9 @@ prompt_add_sample_dags()
     for i in "${!deploy_options[@]}"; do 
       printf "[%s]\t%s\n" "$i" "${deploy_options[$i]}"
     done
-    read user_input_environment 
+    read user_sample_selection 
     echo
-    case $user_input_environment in
+    case $user_sample_selection in
       "0"|"basic plugin install")
         echo -e "\nInstalling plugin...\n"
         plugins/$selected_plugin/bin/setup init
