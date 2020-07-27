@@ -183,7 +183,8 @@ deploy_gcc()
   echo -e "\n\ninstalling $selected_plugin..."
 
   for python_file in $(pwd)/plugins/$selected_plugin/setup/*.py; do
-  gcloud composer environments storage dags import --environment=$ENVIRONMENT_NAME --location $LOCATION --source $python_file
+    gcloud composer environments storage dags import --environment=$ENVIRONMENT_NAME --location $LOCATION --source $python_file
+  done
   if [ "$import_sample_dags" == "y" ] || [ "$import_sample_dags" == "Y" ]; then
     gcloud composer environments storage dags import --environment=$ENVIRONMENT_NAME --location $LOCATION --source $(pwd)/plugins/$selected_plugin/setup/dags/
   fi
